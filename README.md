@@ -57,10 +57,5 @@ NoiseLess Differential Privacy via Signal Filtering for Private Gradient Descent
     └── plots.py                <- Code to create visualizations
 ```
 
-## License
-
-Licensed under the Apache License, Version 2.0.
-See the [LICENSE](LICENSE) file for details.
-
 --------
 
