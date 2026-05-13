@@ -3,7 +3,7 @@ requires = ["flit_core >=3.2,<4"]
 build-backend = "flit_core.buildapi"
 
 [project]
-name = "nldp"
+name = "dp_blade"
 version = "0.0.1"
 description = "NoiseLess Differential Privacy via Signal Filtering for Private Gradient Descent"
 authors = [
@@ -16,10 +16,21 @@ classifiers = [
     "License :: OSI Approved :: MIT License"
 ]
 dependencies = [
+    "accelerate>=1.13.0",
+    "bitsandbytes>=0.49.2",
+    "datasets>=4.8.5",
+    "evaluate>=0.4.6",
+    "jupyterlab>=4.5.7",
     "mkdocs",
+    "mlflow>=3.12.0",
+    "opacus>=1.6.0",
+    "peft>=0.19.1",
     "pip",
     "python-dotenv",
     "ruff",
+    "torch>=2.11.0",
+    "torchvision>=0.26.0",
+    "transformers>=5.8.0",
 ]
 requires-python = "~=3.13.0"
 
