@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI"))
-MLFLOW_EXPERIMENT_NAME = "dp_blade"
+MLFLOW_EXPERIMENT_NAME = "dp_blade-exp"
 
 os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
 os.environ['TORCH_USE_CUDA_DSA'] = "1"
@@ -20,23 +20,27 @@ os.makedirs(SAVE_DIR, exist_ok=True)
 TASK_TYPE = "image" 
 
 DATASET_CONFIG = {
-    "name": "mnist",
+    "name": "cifar10",
     "train_subset_size": None,
     "val_subset_size": None,
-    "batch_size": 128,
-    "val_batch_size": 256,
+    "batch_size": 256,
+    "val_batch_size": 512,
 }
 
 MODEL_CONFIG = {
     "model_id": "google/vit-base-patch16-224-in21k",
     "num_labels": 10,
+    #"model_id": "bert-base-uncased",
+    #"num_labels": 2,
 }
 
 TRAIN_CONFIG = {
     "learning_rate": 5e-4,
-    "epochs": 10,
-    "max_phys_batch": 256,
+    #"learning_rate": 5e-5,
+    "epochs": 20,
+    "max_phys_batch": 512,
     "checkpoint_interval": 1,
+    "patience": 3,
 }
 
 LORA_CONFIG = {
@@ -44,12 +48,13 @@ LORA_CONFIG = {
     "lora_alpha": 16,
     "lora_dropout": 0.05,
     "bias": "none",
-    "target_modules": ["q_proj", "v_proj"],
+    #"target_modules": ["q_proj", "v_proj"],
+    "target_modules": ["q_proj", "v_proj", "query", "value"],
     "modules_to_save": ["classifier"]
 }
 
 DP_CONFIG = {
-    "target_epsilon": 3.0,
+    "target_epsilon": 1.0,
     "target_delta": 1e-5,
     "max_grad_norm": 0.1,
     "poisson_sampling": True,

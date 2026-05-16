@@ -6,6 +6,8 @@ from src.config import DEVICE, TASK_TYPE
 
 accuracy_metric = evaluate.load("accuracy")
 f1_metric = evaluate.load("f1")
+precision_metric = evaluate.load("precision")
+recall_metric = evaluate.load("recall")
 
 def evaluate_metrics(model, loader):
     model.eval()
@@ -25,11 +27,22 @@ def evaluate_metrics(model, loader):
             all_preds.extend(torch.argmax(outputs.logits, dim=-1).cpu().numpy())
             all_labels.extend(labels.cpu().numpy())
 
-    return (
-        total_loss / len(loader),
-        accuracy_metric.compute(predictions=all_preds, references=all_labels)["accuracy"],
-        f1_metric.compute(predictions=all_preds, references=all_labels, average="weighted")["f1"]
-    )
+    avg_loss = total_loss / len(loader)
+    
+    acc = accuracy_metric.compute(predictions=all_preds, references=all_labels)["accuracy"]
+    f1 = f1_metric.compute(predictions=all_preds, references=all_labels, average="weighted")["f1"]
+    precision = precision_metric.compute(predictions=all_preds, references=all_labels, average="weighted")["precision"]
+    recall = recall_metric.compute(predictions=all_preds, references=all_labels, average="weighted")["recall"]
+
+    metrics_dict = {
+        "val_loss": avg_loss,
+        "val_accuracy": acc,
+        "val_f1": f1,
+        "val_precision": precision,
+        "val_recall": recall
+    }
+
+    return metrics_dict
 
 def compute_grad_snr(model):
     snr_list = []

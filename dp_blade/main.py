@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 from src.config import SAVE_DIR, IAKF_DEFAULT_CONFIG
-from src.models.train_model import run_experiment
+from src.models.train_models import run_experiment
 
 EXPERIMENTS_TO_RUN = [
     {"name": "NoDP_Baseline", "method": "NO_DP"},
