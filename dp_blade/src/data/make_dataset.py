@@ -24,16 +24,37 @@ def build_loaders(dataset_config, processor_or_tokenizer):
         dataset = load_dataset("cifar10")
         input_col = "img"
         label_col = "label"
+        ds_train, ds_val = dataset["train"], dataset["test"]
     elif d_name == "mnist":
         dataset = load_dataset("mnist")
         input_col = "image"
         label_col = "label"
+        ds_train, ds_val = dataset["train"], dataset["test"]
+    elif d_name == "sst2":
+        dataset = load_dataset("glue", "sst2")
+        input_col = "sentence"
+        label_col = "label"
+        ds_train, ds_val = dataset["train"], dataset["validation"]
+    elif d_name == "imdb":
+        dataset = load_dataset("imdb")
+        input_col = "text"
+        label_col = "label"
+        ds_train, ds_val = dataset["train"], dataset["test"]
+    elif d_name == "qnli":
+        dataset = load_dataset("glue", "qnli")
+        input_col = ["question", "sentence"]
+        label_col = "label"
+        ds_train, ds_val = dataset["train"], dataset["validation"]
+    elif d_name == "mnli":
+        dataset = load_dataset("glue", "mnli")
+        input_col = ["premise", "hypothesis"]
+        label_col = "label"
+        ds_train, ds_val = dataset["train"], dataset["validation_matched"]
     else:
         dataset = load_dataset(d_name)
         input_col = "text"
         label_col = "label"
-
-    ds_train, ds_val = dataset["train"], dataset["test"]
+        ds_train, ds_val = dataset["train"], dataset["test"]
 
     if dataset_config.get("train_subset_size"):
         ds_train = ds_train.shuffle(seed=42).select(range(dataset_config["train_subset_size"]))
@@ -47,7 +68,10 @@ def build_loaders(dataset_config, processor_or_tokenizer):
             augmented_images = [train_aug(img.convert("RGB")) for img in examples[input_col]]
             inputs = processor_or_tokenizer(augmented_images, return_tensors="pt")
         else:
-            inputs = processor_or_tokenizer(examples[input_col], padding="max_length", truncation=True, return_tensors="pt")
+            if isinstance(input_col, list):
+                inputs = processor_or_tokenizer(examples[input_col[0]], examples[input_col[1]], padding="max_length", truncation=True, return_tensors="pt")
+            else:
+                inputs = processor_or_tokenizer(examples[input_col], padding="max_length", truncation=True, return_tensors="pt")
             
         inputs["label"] = examples[label_col]
         return inputs
@@ -57,7 +81,10 @@ def build_loaders(dataset_config, processor_or_tokenizer):
             clean_images = [img.convert("RGB") for img in examples[input_col]]
             inputs = processor_or_tokenizer(clean_images, return_tensors="pt")
         else:
-            inputs = processor_or_tokenizer(examples[input_col], padding="max_length", truncation=True, return_tensors="pt")
+            if isinstance(input_col, list):
+                inputs = processor_or_tokenizer(examples[input_col[0]], examples[input_col[1]], padding="max_length", truncation=True, return_tensors="pt")
+            else:
+                inputs = processor_or_tokenizer(examples[input_col], padding="max_length", truncation=True, return_tensors="pt")
             
         inputs["label"] = examples[label_col]
         return inputs

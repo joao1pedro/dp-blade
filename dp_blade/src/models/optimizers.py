@@ -75,8 +75,8 @@ class DiSKOptimizer(Optimizer):
         self.kappa = kappa
         self.c1 = (1.0 - kappa) / (kappa * gamma)
         self.c2 = 1.0 - self.c1
-        norm_factor = math.sqrt(self.c1**2 + self.c2**2)
-        self.dp_optimizer.noise_multiplier = self.dp_optimizer.noise_multiplier / norm_factor
+        #norm_factor = math.sqrt(self.c1**2 + self.c2**2)
+        #self.dp_optimizer.noise_multiplier = self.dp_optimizer.noise_multiplier / norm_factor
         self.state = {}
         for p in self.model.parameters():
             if p.requires_grad:
