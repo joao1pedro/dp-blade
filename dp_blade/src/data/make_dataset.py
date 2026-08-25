@@ -35,6 +35,16 @@ def build_loaders(dataset_config, processor_or_tokenizer):
         input_col = "sentence"
         label_col = "label"
         ds_train, ds_val = dataset["train"], dataset["validation"]
+    elif d_name == "rte":
+        dataset = load_dataset("glue", "rte")
+        input_col = ["sentence1", "sentence2"]
+        label_col = "label"
+        ds_train, ds_val = dataset["train"], dataset["validation"]
+    elif d_name == "cola":
+        dataset = load_dataset("glue", "cola")
+        input_col = "sentence"
+        label_col = "label"
+        ds_train, ds_val = dataset["train"], dataset["validation"]
     elif d_name == "imdb":
         dataset = load_dataset("imdb")
         input_col = "text"

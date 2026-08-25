@@ -75,8 +75,6 @@ class DiSKOptimizer(Optimizer):
         self.kappa = kappa
         self.c1 = (1.0 - kappa) / (kappa * gamma)
         self.c2 = 1.0 - self.c1
-        #norm_factor = math.sqrt(self.c1**2 + self.c2**2)
-        #self.dp_optimizer.noise_multiplier = self.dp_optimizer.noise_multiplier / norm_factor
         self.state = {}
         for p in self.model.parameters():
             if p.requires_grad:
@@ -245,3 +243,97 @@ class IAKFBlockwiseDiSKOptimizer(Optimizer):
         res = {k: np.mean(v) for k, v in self.step_stats.items()}
         self.step_stats = {k: [] for k in self.step_stats}
         return res
+    
+class FFTKFOptimizer(torch.optim.Optimizer):
+    def __init__(self, dp_optimizer, model, gamma=0.5, kappa=0.7, lam=0.5, rho=0.5, sigma_fd=1.0):
+        self.defaults = {}
+        self.dp_optimizer = dp_optimizer
+        self.original_optimizer = dp_optimizer.original_optimizer
+        self.model = model
+        self.gamma = gamma
+        self.kappa = kappa
+        self.lam = lam
+        self.rho = rho
+        self.sigma_fd = sigma_fd
+        self.c1 = (1.0 - kappa) / (kappa * gamma)
+        self.c2 = 1.0 - self.c1
+        self.state = {}
+        for p in self.model.parameters():
+            if p.requires_grad:
+                self.state[p] = {
+                    'd_prev': torch.zeros_like(p.data),
+                    'g_kalman': torch.zeros_like(p.data)
+                }
+
+    def __getattr__(self, name):
+        if name in ['dp_optimizer', 'original_optimizer', 'model', 'state',
+                    'gamma', 'kappa', 'lam', 'rho', 'c1', 'c2', 'sigma_fd', 'defaults']:
+            raise AttributeError
+        return getattr(self.dp_optimizer, name)
+
+    def zero_grad(self, set_to_none: bool = False):
+        self.dp_optimizer.zero_grad(set_to_none=set_to_none)
+
+    def step(self, closure):
+        original_weights = {}
+        with torch.no_grad():
+            for p in self.model.parameters():
+                if p.requires_grad:
+                    original_weights[p] = p.data.clone()
+                    if p in self.state:
+                        p.data.add_(self.state[p]['d_prev'], alpha=self.gamma)
+
+        self.dp_optimizer.zero_grad()
+        loss = closure()
+        grads_shifted = {}
+        for p in self.model.parameters():
+            if p.requires_grad and hasattr(p, "grad_sample") and p.grad_sample is not None:
+                grads_shifted[p] = p.grad_sample.detach().clone()
+
+        self.dp_optimizer.zero_grad()
+        with torch.no_grad():
+            for p, w_orig in original_weights.items():
+                p.data.copy_(w_orig)
+
+        loss = closure()
+
+        with torch.no_grad():
+            for p in self.model.parameters():
+                if p.requires_grad and p in grads_shifted:
+                    if hasattr(p, "grad_sample") and p.grad_sample is not None:
+                        fd_noise = torch.randn_like(p.grad_sample) * self.sigma_fd
+                        p.grad_sample.mul_(self.c2).add_(grads_shifted[p], alpha=self.c1).add_(fd_noise)
+                    del grads_shifted[p]
+            del grads_shifted
+
+        if self.dp_optimizer.pre_step():
+            with torch.no_grad():
+                for p in self.model.parameters():
+                    if p.requires_grad and p.grad is not None:
+                        state = self.state[p]
+                        g_noisy = p.grad.data
+                        d_size = g_noisy.numel()
+                        k_0 = int(self.lam * d_size)
+                        z = g_noisy.view(-1)
+                        Z = torch.fft.fft(z)
+
+                        indices = torch.arange(d_size, device=z.device, dtype=torch.float32)
+                        mask = torch.ones(d_size, device=z.device, dtype=torch.float32)
+                        if k_0 < d_size:
+                            high_freq_idx = indices[k_0:]
+                            mask[k_0:] = 1.0 - self.rho * torch.exp(-(high_freq_idx - k_0))
+                        mask_complex = mask.to(dtype=Z.dtype)
+
+                        z_hat = torch.fft.ifft(Z * mask_complex).real
+                        g_filtered = z_hat.view_as(g_noisy)
+
+                        state['g_kalman'].lerp_(g_filtered, weight=self.kappa)
+                        p.grad.data.copy_(state['g_kalman'])
+
+            self.original_optimizer.step()
+            with torch.no_grad():
+                for p in self.model.parameters():
+                    if p.requires_grad and p in self.state:
+                        self.state[p]['d_prev'].copy_(p.data - original_weights[p])
+
+        return loss

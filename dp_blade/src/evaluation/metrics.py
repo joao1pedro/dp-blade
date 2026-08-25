@@ -8,6 +8,7 @@ accuracy_metric = evaluate.load("accuracy")
 f1_metric = evaluate.load("f1")
 precision_metric = evaluate.load("precision")
 recall_metric = evaluate.load("recall")
+#mcc_metric = evaluate.load("matthews_correlation")
 
 def evaluate_metrics(model, loader):
     model.eval()
@@ -33,13 +34,15 @@ def evaluate_metrics(model, loader):
     f1 = f1_metric.compute(predictions=all_preds, references=all_labels, average="weighted")["f1"]
     precision = precision_metric.compute(predictions=all_preds, references=all_labels, average="weighted")["precision"]
     recall = recall_metric.compute(predictions=all_preds, references=all_labels, average="weighted")["recall"]
+    #mcc = mcc_metric.compute(predictions=all_preds, references=all_labels)["matthews_correlation"]
 
     metrics_dict = {
         "val_loss": avg_loss,
         "val_accuracy": acc,
         "val_f1": f1,
         "val_precision": precision,
-        "val_recall": recall
+        "val_recall": recall,
+        #"val_mcc": mcc
     }
 
     return metrics_dict

@@ -7,7 +7,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI"))
-MLFLOW_EXPERIMENT_NAME = "dp_blade-text-cls_epsilon1.0"
+#MLFLOW_EXPERIMENT_NAME = "dp_blade_txt-cls_epsilon-8.0_dft-lr"
+MLFLOW_EXPERIMENT_NAME = "dp_blade-text-cls_epsilon3.0_roberta_dft-lr"
 
 os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
 os.environ['TORCH_USE_CUDA_DSA'] = "1"
@@ -20,8 +21,7 @@ os.makedirs(SAVE_DIR, exist_ok=True)
 TASK_TYPE = "text" 
 
 DATASET_CONFIG = {
-    #"name": "cifar10",
-    "name": "qnli",
+    "name": "sst2",
     "train_subset_size": None,
     "val_subset_size": None,
     "batch_size": 64, # default 64
@@ -29,16 +29,14 @@ DATASET_CONFIG = {
 }
 
 MODEL_CONFIG = {
-    #"model_id": "google/vit-base-patch16-224-in21k",
-    #"num_labels": 10,
-    "model_id": "bert-base-uncased",
+    #"model_id": "bert-base-uncased",
+    "model_id": "roberta-base",
     "num_labels": 2, # 3 for mnli
-    #"num_labels": 3,
 }
 
 TRAIN_CONFIG = {
-    #"learning_rate": 5e-4,
-    "learning_rate": 5e-5,
+    "learning_rate": 5e-5, # NLP (default exps) - BERT
+    #"learning_rate": 2e-5, # NLP grad explosion - RoBERTa
     "epochs": 30,
     "max_phys_batch": 128, # default 128
     "checkpoint_interval": 1,
@@ -56,9 +54,9 @@ LORA_CONFIG = {
 }
 
 DP_CONFIG = {
-    "target_epsilon": 1.0,
+    "target_epsilon": 3.0,
     "target_delta": 1e-5,
-    "max_grad_norm": 0.1,
+    "max_grad_norm": 1.0,
     "poisson_sampling": True,
 }
 
@@ -70,4 +68,11 @@ IAKF_DEFAULT_CONFIG = {
     "q_scale": 1e-2,
     "kappa_min": 0.01,
     "kappa_max": 0.99,
+}
+
+FFTKF_DEFAULT_CONFIG = {
+    "gamma": 0.5,
+    "kappa": 0.7,
+    "lam": 0.5,
+    "rho": 0.5
 }

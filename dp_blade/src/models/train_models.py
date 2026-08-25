@@ -10,12 +10,12 @@ from peft import get_peft_model, LoraConfig
 from opacus import PrivacyEngine
 from opacus.utils.batch_memory_manager import BatchMemoryManager
 
-from src.config import DEVICE, SAVE_DIR, DATASET_CONFIG, MODEL_CONFIG, TRAIN_CONFIG, LORA_CONFIG, DP_CONFIG, IAKF_DEFAULT_CONFIG, TASK_TYPE, MLFLOW_EXPERIMENT_NAME
+from src.config import DEVICE, SAVE_DIR, DATASET_CONFIG, MODEL_CONFIG, TRAIN_CONFIG, LORA_CONFIG, DP_CONFIG, IAKF_DEFAULT_CONFIG, TASK_TYPE, MLFLOW_EXPERIMENT_NAME, FFTKF_DEFAULT_CONFIG
 from src.data.make_dataset import build_loaders
-from src.models.optimizers import DopplerDPOptimizer, DiSKOptimizer, IAKFBlockwiseDiSKOptimizer
+from src.models.optimizers import DopplerDPOptimizer, DiSKOptimizer, IAKFBlockwiseDiSKOptimizer, FFTKFOptimizer
 from src.evaluation.metrics import evaluate_metrics, compute_grad_snr, save_checkpoint
 
-def run_experiment(exp_name, method, iakf_config=None, seed=42):
+def run_experiment(exp_name, method, iakf_config=None, fftkf_config=None, seed=42):
     print(f"\n[{exp_name}] Starting Seed: {seed} | Method: {method}")
     torch.manual_seed(seed)
     np.random.seed(seed)
@@ -43,6 +43,8 @@ def run_experiment(exp_name, method, iakf_config=None, seed=42):
 
         if method == "IAKF" and iakf_config:
             mlflow.log_params({f"iakf_{k}": v for k, v in iakf_config.items()})
+        if method == "FFTKF" and fftkf_config:
+            mlflow.log_params({f"fftkf_{k}": v for k, v in fftkf_config.items()})
 
         if TASK_TYPE == "image":
             processor_or_tokenizer = AutoImageProcessor.from_pretrained(MODEL_CONFIG["model_id"])
@@ -65,6 +67,8 @@ def run_experiment(exp_name, method, iakf_config=None, seed=42):
 
         base_optimizer = torch.optim.AdamW([p for p in model.parameters() if p.requires_grad], lr=TRAIN_CONFIG["learning_rate"], betas=(0.9, 0.999))
 
+        expanded_alphas = [1 + x / 10.0 for x in range(1, 100)] + list(range(12, 64)) + [128, 256, 512, 1024]
+
         if method != "NO_DP":
             privacy_engine = PrivacyEngine()
             model, dp_optimizer, current_train_loader = privacy_engine.make_private_with_epsilon(
@@ -74,12 +78,16 @@ def run_experiment(exp_name, method, iakf_config=None, seed=42):
                 target_epsilon=DP_CONFIG["target_epsilon"],
                 target_delta=DP_CONFIG["target_delta"],
                 epochs=TRAIN_CONFIG["epochs"],
-                max_grad_norm=DP_CONFIG["max_grad_norm"]
+                max_grad_norm=DP_CONFIG["max_grad_norm"],
+                alphas=expanded_alphas
             )
 
             if method == "IAKF":
                 conf = iakf_config if iakf_config else IAKF_DEFAULT_CONFIG
                 optimizer = IAKFBlockwiseDiSKOptimizer(dp_optimizer=dp_optimizer, model=model, **conf)
+            elif method == "FFTKF":
+                conf = fftkf_config if fftkf_config else FFTKF_DEFAULT_CONFIG
+                optimizer = FFTKFOptimizer(dp_optimizer=dp_optimizer, model=model, **conf)
             elif method == "DISK":
                 optimizer = DiSKOptimizer(dp_optimizer=dp_optimizer, model=model)
             elif method == "DOPPLER":
@@ -134,7 +142,7 @@ def run_experiment(exp_name, method, iakf_config=None, seed=42):
                         loss.backward()
                         return loss
 
-                    if method in ["IAKF", "DISK", "DOPPLER"]:
+                    if method in ["IAKF", "DISK", "DOPPLER", "FFTKF"]:
                         step_loss = optimizer.step(closure)
                         epoch_losses.append(step_loss.item())
                     else:
@@ -223,6 +231,9 @@ def run_experiment(exp_name, method, iakf_config=None, seed=42):
         if method == "IAKF" and iakf_config:
             for k, v in iakf_config.items():
                 summary[f"iakf_{k}"] = v
+        if method == "FFTKF" and fftkf_config:
+            for k, v in fftkf_config.items():
+                summary[f"fftkf_{k}"] = v
 
         mlflow.log_metrics({
             "best_val_acc_overall": best_val_acc,
