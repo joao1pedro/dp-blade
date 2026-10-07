@@ -7,7 +7,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI"))
-#MLFLOW_EXPERIMENT_NAME = "dp_blade_txt-cls_epsilon-8.0_dft-lr"
 MLFLOW_EXPERIMENT_NAME = "dp_blade-text-cls_epsilon3.0_roberta_dft-lr"
 
 os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
@@ -24,21 +23,19 @@ DATASET_CONFIG = {
     "name": "sst2",
     "train_subset_size": None,
     "val_subset_size": None,
-    "batch_size": 64, # default 64
-    "val_batch_size": 128, # default 128
+    "batch_size": 64,
+    "val_batch_size": 128,
 }
 
 MODEL_CONFIG = {
-    #"model_id": "bert-base-uncased",
     "model_id": "roberta-base",
-    "num_labels": 2, # 3 for mnli
+    "num_labels": 2,
 }
 
 TRAIN_CONFIG = {
-    "learning_rate": 5e-5, # NLP (default exps) - BERT
-    #"learning_rate": 2e-5, # NLP grad explosion - RoBERTa
+    "learning_rate": 5e-5,
     "epochs": 30,
-    "max_phys_batch": 128, # default 128
+    "max_phys_batch": 128,
     "checkpoint_interval": 1,
     "patience": 15,
 }
@@ -48,7 +45,6 @@ LORA_CONFIG = {
     "lora_alpha": 16,
     "lora_dropout": 0.05,
     "bias": "none",
-    #"target_modules": ["q_proj", "v_proj"],
     "target_modules": ["q_proj", "v_proj", "query", "value"],
     "modules_to_save": ["classifier"]
 }

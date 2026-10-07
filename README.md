@@ -6,6 +6,44 @@
 
 DP-BLADE: Differentially Private Blockwise Layer-Adaptive DEnoising
 
+This repository contains the official code to reproduce the experiments presented in the paper.
+
+## 1. Requirements & Setup
+
+- Python 3.10+
+- CUDA-compatible GPU
+
+Create and activate the environment:
+```bash
+uv sync
+source .venv/bin/activate
+```
+
+Configure the experiment setup ```dp_blade/src/config.py```
+```python
+DATASET_CONFIG = {
+    "name": "imdb", # configure the dataset (imdb or qnli)
+...    
+}
+
+MODEL_CONFIG = {
+    "model_id": "roberta-base", # configure the model bert-base-uncased or roberta-base
+    "num_labels": 2,
+}
+
+DP_CONFIG = {
+    "target_epsilon": 3.0, # 1.0, 3.0 or 8.0
+    "target_delta": 1e-5,
+    ...
+}
+```
+
+Start the training:
+```bash
+uv run dp_blade/main.py
+```
+
+
 ## Project Organization
 
 ```
